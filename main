@@ -4,7 +4,7 @@ from emotion_score import emotion_scoring
 from memory import memory,short_term_memory
 import os
 from conversation import conversation
-from 用户画像 import personal_picture
+from personal_picture import personal_picture
 from safe_json_loads import safe_json_loads
 
 def main():
