@@ -1,0 +1,89 @@
+import os
+
+from memory import call_api
+import json
+from safe_json_loads import safe_json_loads
+
+debug=False
+# 定义字典，每次追加json文件中。
+# 不到五次，按当前次数计算得分；超过五次，按最近五次计算得分。
+# 函数输出当前的得分。
+
+def emotion_scoring(max_count):
+    file_path="emotion_score.json"
+    # 建立情绪得分字典
+    with open('memory.json','r',encoding='utf-8') as f:
+        history=json.load(f)
+
+    history=history[-max_count:]
+    emotion_list=[]
+
+    for item in history:
+        current_emotion= item['emotion']
+        emotion_list.append(current_emotion)
+
+    with open(file_path,'w',encoding='utf-8') as f:
+        json.dump(emotion_list,f,ensure_ascii=False,indent=4)
+
+    # 至此，每次写入文件都会情空前面的，只保留当前几个。
+
+    # 得分计算方法：
+    final_emotion = {
+                "悲伤":0,
+                "焦虑":0,
+                "愤怒":0,
+                "孤独":0,
+                "压力":0,
+                "绝望":0
+                 }
+    # weight = [0.4,0.3,0.15,0.1,0.05]   # 权重归一化
+    # 用每个字典里对应的情绪得分加权求和。
+    # 不满五次，按当前次数计算总得分。分别写进final_emotion里。
+
+    # 如果情绪得分骤变，更新窗口
+    with open(file_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    sum_score=sum(data[-1].values())
+
+    if sum_score <=1:
+        # 现在用户的负面得分太低了，以当前为准。
+        final_emotion = data[-1]
+    # 有一定程度的负面情绪。需要记录。
+    elif len(data) <= max_count:
+        pass
+    else:
+        data=data[-max_count:]
+        data.reverse()
+        # 确保了每次取出一个列表，包含最近五次的字典。
+
+        # 取出每个小字典
+        # 计算得分。
+        if len(data)==1:
+            weight=[1.00]
+        elif len(data)==2:
+            weight=[0.60,0.40]
+        elif len(data)==3:
+            weight=[0.50,0.30,0.20]
+        elif len(data)==4:
+            weight=[0.40,0.30,0.20,0.10]
+        elif len(data)==5:
+            weight=[0.40,0.30,0.15,0.10,0.05]
+
+        i=0
+        for item in data:
+            w = weight[i]
+
+            final_emotion["悲伤"] += item["悲伤"] * w
+            final_emotion["焦虑"] += item["焦虑"] * w
+            final_emotion["愤怒"] += item["愤怒"] * w
+            final_emotion["孤独"] += item["孤独"] * w
+            final_emotion["压力"] += item["压力"] * w
+            final_emotion["绝望"] += item["绝望"] * w
+
+            i += 1
+
+    if data is None:
+        return '出错了。没有保存到记忆中。请检查提示词。'
+    # 得分计算完成。生成了最终得分字典。
+    return final_emotion
