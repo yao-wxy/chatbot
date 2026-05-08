@@ -8,7 +8,7 @@ from personal_picture import personal_picture
 from safe_json_loads import safe_json_loads
 
 def main():
-    API_KEY = "sk-08a85c5577e94d3bbf38f98adb72a842"
+    API_KEY = MYAPIKEY
     BASE_URL = "https://api.deepseek.com"
     MODEL_NAME = "deepseek-chat"
     max_count=5
