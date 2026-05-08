@@ -1,0 +1,134 @@
+import os
+import json
+from openai import OpenAI
+from safe_json_loads import safe_json_loads
+
+def call_api(API_KEY,BASE_URL,MODEL_NAME,SYSTEM_PROMPT,users_input):
+    client = OpenAI(
+        api_key=API_KEY,
+        base_url=BASE_URL
+    )
+    response = client.chat.completions.create(
+        model=MODEL_NAME,
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": users_input}
+        ]
+    )
+    response = response.choices[0].message.content
+    return response
+
+
+def memory(user_input, API_KEY, MODEL_NAME, BASE_URL, max_count):
+    memory={
+        "core_idea": None,
+        "difficult_events":None,
+        "thoughts_or_points":
+        {"self_evaluation":None,
+         "evaluation_of_person_involved":None,
+         "evaluation_of_the_event":None,
+         "objective_evaluation":None,
+         "subjective_evaluation":None,
+         "emotional_evaluation":None,
+         "conflicting_view":None,
+         "distorted_view":None,
+         "irrational_beliefs":None,
+         "pain_points": None
+         },
+        "risk_of_self_harm":None,
+        "emotion":
+        {
+            "悲伤": 0.00,
+            "焦虑": 0.00,
+            "愤怒": 0.00,
+            "孤独": 0.00,
+            "压力": 0.00,
+            "绝望": 0.00
+        }
+    }
+
+    # 构建当前的记忆列表。旧记忆+新记忆。新记忆为用户当前说过的话。经由模型压缩意思，提取重要信息。
+    file_path = "memory.json"
+
+    if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
+        old_memory=None
+
+    else:
+        with open('memory.json', 'r', encoding='utf-8') as f:
+            old_memory=json.load(f)
+            old_memory=old_memory[-max_count:]
+
+    system_prompt = f"""
+    你是一名心理学信息提取专家。
+
+    任务：从用户输入中提取关键信息，并更新记忆。
+
+    必须输出 JSON，严格按照以下结构：
+
+    {memory}
+
+    规则：
+    1. 只输出 JSON，不要任何解释、说明或额外文字。
+    2. 禁止使用 ``` 或 markdown。
+    3. 所有字段必须存在，未提及的字段填 null。
+    4. 结合旧记忆进行更新，只修改需要改变的内容。
+    5. 如果内容发生明显变化，可以整体重写。
+    6. 情绪部分的信息只参考当前用户的输入。
+    7. 情绪类型的相关信息中，所有值必须用0~1的浮点数，保留两位小数，不要加双引号。
+    8. 所有键必须用双引号
+
+
+    用户输入：
+    {user_input}
+
+    旧记忆：
+    {old_memory}
+    """
+
+    response = call_api(API_KEY,BASE_URL,MODEL_NAME,SYSTEM_PROMPT=system_prompt,users_input=user_input)
+
+    response = safe_json_loads(response)
+
+    if not os.path.exists("memory.json") or os.path.getsize("memory.json") == 0:
+        data = []
+        data.append(response)
+
+        with open("memory.json", "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+
+    else:
+        with open('memory.json', 'r', encoding='utf-8') as f:
+            data=json.load(f)
+
+        if not isinstance(data,list):
+            data=[data]
+
+        data.append(response)
+
+        with open("memory.json", "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+
+    with open('memory.json', 'r', encoding='utf-8') as f:
+        result = f.read()
+
+    return result
+
+
+def short_term_memory(max_count,final_emotion):
+    # 生成临时对话窗口。不更改原文件。临时记录里面的每一个情绪都改成最终情绪。
+    # 将临时对话窗口以列表的形式返回
+    with open('memory.json','r',encoding='utf-8') as f:
+        history = json.load(f)
+
+    if len(history) >= max_count:
+        history = history[-max_count:]
+
+    temporary_memory=[]
+
+    for item in history:
+        item['emotion'] = final_emotion
+        temporary_memory.append(item)
+
+    return temporary_memory
+
+
