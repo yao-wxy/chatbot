@@ -1,0 +1,15 @@
+# 困难情绪空间。容纳和理解困难时的情绪。包括悲伤、焦虑、愤怒等。
+# 联系情绪评分函数和记忆函数。将用户的话语进行逐步回答。
+# 先评分。然后计入记忆当中。生成回复。
+import json
+from memory import call_api
+
+def conversation(API_KEY, BASE_URL, MODEL_NAME, user_input,preferred_information,temporary_memory):
+    system_prompt = f'''你是一名体贴友善的心理学家和情绪陪伴好友，你擅长分析用户当前的困境和情绪，结合他的认知规律做出回复，分析、引导和陪伴。
+                    用户的长期记忆为{preferred_information}，当前的对话历史为{temporary_memory}，当前所说的话为{user_input}。
+                    如果用户当前提及的内容和长期记忆有关时，才可以提及。不要强行植入无关的记忆。
+                    请你输出回复。不超过100个字。'''
+
+    response = call_api(API_KEY, BASE_URL, MODEL_NAME, SYSTEM_PROMPT=system_prompt, users_input=user_input)
+
+    return response
