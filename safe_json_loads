@@ -1,0 +1,20 @@
+import json
+import re
+
+def safe_json_loads(response):
+    if not response:
+        raise ValueError("模型返回为空")
+
+    response = response.strip()
+
+    # 去掉 ```json ``` 包裹
+    if response.startswith("```"):
+        response = re.sub(r"^```.*?\n", "", response)
+        response = response.rstrip("```").strip()
+
+    # 提取第一个 { ... }
+    match = re.search(r"\{.*\}", response, re.DOTALL)
+    if match:
+        response = match.group()
+
+    return json.loads(response)
