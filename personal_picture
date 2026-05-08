@@ -1,0 +1,53 @@
+from memory import call_api
+import json
+import os
+debug=False
+def personal_picture(API_KEY, BASE_URL, MODEL_NAME, user_input):
+    file_path='user_picture.json'
+
+    with open('memory.json','r',encoding='utf-8') as f:
+        history=json.load(f)
+
+    current_memory = history[-10:]
+
+    memory_list=[]
+
+    for item in current_memory:
+        memory_list.append(item)
+
+    if debug:
+        print(memory_list[0])
+
+    if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
+        user_preferred = []
+
+    else:
+        with open(file_path,'r',encoding='utf-8') as f:
+            user_preferred = json.load(f)
+
+    if not isinstance(user_preferred,list):
+        user_preferred=[user_preferred]
+
+    if any(x in user_input for x in ['保存记忆','计入记忆','记入记忆','你记住','记住','记好了']):
+        system_prompt = f'''用户明确要求记录记忆。当前问题是{user_input}。
+            请用一句话概括用户想记住的内容（喜好、厌恶或重要信息）。'''
+        response = call_api(API_KEY, BASE_URL, MODEL_NAME, SYSTEM_PROMPT=system_prompt, users_input=user_input)
+        user_preferred.append(response)
+
+    else:
+        system_prompt = f'''你是一个善于发现并记录用户画像的人。
+        用户的最近十轮历史对话记录为{memory_list}，如果发现了用户的喜好，厌恶的事物，或者用户希望保存的记忆，
+        请你用一句话概括这些内容。
+        概括的内容不能与{user_preferred}冲突。
+        如果没有，输出 null'''
+        response = call_api(API_KEY, BASE_URL, MODEL_NAME, SYSTEM_PROMPT=system_prompt, users_input=user_input)
+        if 'null' not in response:
+            user_preferred.append(response)
+
+    with open(file_path,'w',encoding='utf-8') as f:
+        json.dump(user_preferred, f, ensure_ascii=False, indent=2)
+
+    with open(file_path, 'r', encoding='utf-8') as f:
+        preferred_information = f.read()
+
+    return preferred_information
